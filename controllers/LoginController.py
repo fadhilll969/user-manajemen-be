@@ -2,7 +2,7 @@ import falcon
 import json
 import re
 
-from pony.orm import db_session, select
+from pony.orm import db_session
 from models.Login import Login
 
 
@@ -38,13 +38,13 @@ class LoginController:
             }
             return
 
-        login = select(
-            l for l in Login
-            if l.email == email
-            and l.password == password
-        ).first()
+        # Diganti dari:
+        #   select(l for l in Login if l.email == email and l.password == password).first()
+        # Pakai .get(email=...) supaya tidak lewat proses decompile Pony
+        # (yang error di Python 3.12/3.13), lalu cocokkan password di Python.
+        login = Login.get(email=email)
 
-        if not login:
+        if not login or login.password != password:
             resp.status = falcon.HTTP_401
             resp.media = {
                 "message": "Email atau password salah"

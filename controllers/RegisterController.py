@@ -2,7 +2,7 @@ import falcon
 import json
 import re
 
-from pony.orm import db_session, select
+from pony.orm import db_session
 from models.Login import Login
 
 
@@ -39,9 +39,9 @@ class RegisterController:
             }
             return
 
-        existing = select(
-            l for l in Login if l.email == email
-        ).first()
+        # Diganti dari: select(l for l in Login if l.email == email).first()
+        # .get(email=...) tidak butuh proses decompile Pony sama sekali.
+        existing = Login.get(email=email)
 
         if existing:
             resp.status = falcon.HTTP_409

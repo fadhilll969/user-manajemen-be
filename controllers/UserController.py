@@ -1,6 +1,6 @@
 import json
 import falcon
-from pony.orm import db_session, select
+from pony.orm import db_session
 
 from models.User import User
 
@@ -10,7 +10,9 @@ class UserController:
     @staticmethod
     @db_session
     def get_users(req, resp):
-        users = select(u for u in User)[:]
+        users = User.select()[:]  # diganti dari select(u for u in User)[:]
+                                   # supaya tidak lewat proses decompile Pony
+                                   # (yang bermasalah di Python 3.12/3.13)
 
         data = []
 
@@ -171,7 +173,13 @@ class UserController:
             user.alasanNonAktif = data["alasanNonAktif"]
 
         if data.get("password"):
-          user.password = data["password"]
+            if len(data["password"]) < 8:
+                resp.status = falcon.HTTP_422
+                resp.media = {
+                    "message": "Kata sandi minimal 8 karakter"
+                }
+                return
+            user.password = data["password"]
 
         resp.status = falcon.HTTP_200
         resp.media = {
