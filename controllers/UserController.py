@@ -10,9 +10,7 @@ class UserController:
     @staticmethod
     @db_session
     def get_users(req, resp):
-        users = User.select()[:]  # diganti dari select(u for u in User)[:]
-                                   # supaya tidak lewat proses decompile Pony
-                                   # (yang bermasalah di Python 3.12/3.13)
+        users = User.select()[:]  
 
         data = []
 
