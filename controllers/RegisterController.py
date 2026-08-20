@@ -3,6 +3,7 @@ import json
 import re
 
 from pony.orm import db_session
+
 from models.Login import Login
 
 
@@ -12,11 +13,22 @@ class RegisterController:
     @db_session
     def register(req, resp):
 
-        data = json.load(req.bounded_stream)
+        try:
+            data = json.load(req.bounded_stream)
+        except Exception:
+            resp.status = falcon.HTTP_400
+            resp.media = {
+                "message": "Data JSON tidak valid"
+            }
+            return
 
         nama = data.get("nama")
         email = data.get("email")
         password = data.get("password")
+
+        # =========================
+        # VALIDASI FIELD
+        # =========================
 
         if not nama or not email or not password:
             resp.status = falcon.HTTP_400
@@ -25,12 +37,25 @@ class RegisterController:
             }
             return
 
-        if not re.match(r"^[a-zA-Z0-9._%+-]+@gmail\.com$", email):
+        # =========================
+        # VALIDASI EMAIL
+        # =========================
+
+        email = email.strip()
+
+        if not re.match(
+            r"^[a-zA-Z0-9][a-zA-Z0-9._%+-]*@gmail\.com$",
+            email
+        ):
             resp.status = falcon.HTTP_400
             resp.media = {
                 "message": "Email harus menggunakan @gmail.com"
             }
             return
+
+        # =========================
+        # VALIDASI PASSWORD
+        # =========================
 
         if len(password) < 8:
             resp.status = falcon.HTTP_400
@@ -39,8 +64,10 @@ class RegisterController:
             }
             return
 
-        # Diganti dari: select(l for l in Login if l.email == email).first()
-        # .get(email=...) tidak butuh proses decompile Pony sama sekali.
+        # =========================
+        # CEK EMAIL
+        # =========================
+
         existing = Login.get(email=email)
 
         if existing:
@@ -50,13 +77,18 @@ class RegisterController:
             }
             return
 
+        # =========================
+        # CREATE USER
+        # =========================
+
         Login(
-            nama=nama,
+            nama=nama.strip(),
             email=email,
             password=password
         )
 
         resp.status = falcon.HTTP_201
+
         resp.media = {
             "message": "Register berhasil"
         }
