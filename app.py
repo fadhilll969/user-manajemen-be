@@ -1,5 +1,7 @@
 import os
+
 import falcon
+
 from waitress import serve
 
 from config.database import db
@@ -17,19 +19,7 @@ cors = falcon.CORSMiddleware(
     allow_origins=[
         "https://user-manajemen-fe.vercel.app",
         "http://localhost:5173",
-    ],
-    allow_methods=[
-        "GET",
-        "POST",
-        "PUT",
-        "DELETE",
-        "OPTIONS",
-    ],
-    allow_headers=[
-        "Content-Type",
-        "Authorization",
-        "Accept",
-    ],
+    ]
 )
 
 
