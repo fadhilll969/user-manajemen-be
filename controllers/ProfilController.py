@@ -15,14 +15,14 @@ class ProfilController:
 
     @staticmethod
     @db_session
-    def update_profil(req, resp, user_id):
+    def update_profil(req, resp, id):
 
         try:
             # =========================
             # CARI USER
             # =========================
 
-            user = User.get(id=user_id)
+            user = User.get(id=id)
 
             if not user:
                 resp.status = 404
@@ -33,7 +33,7 @@ class ProfilController:
                 return
 
             # =========================
-            # NAMA
+            # UPDATE NAMA
             # =========================
 
             nama = req.get_param("nama")
@@ -45,41 +45,31 @@ class ProfilController:
                     user.nama = nama
 
             # =========================
-            # FOTO
+            # UPDATE FOTO
             # =========================
 
             foto = req.get_param("foto")
 
             if foto and foto.file:
 
-                # -------------------------
-                # VALIDASI UKURAN
-                # -------------------------
-
+                # Validasi ukuran
                 foto.file.seek(0, os.SEEK_END)
+
                 ukuran = foto.file.tell()
+
                 foto.file.seek(0)
 
-                max_size = 2 * 1024 * 1024
-
-                if ukuran > max_size:
-
+                if ukuran > 2 * 1024 * 1024:
                     resp.status = 400
                     resp.media = {
                         "success": False,
                         "message": "Ukuran foto maksimal 2 MB"
                     }
-
                     return
 
-                # -------------------------
-                # VALIDASI FORMAT
-                # -------------------------
-
-                nama_file_lama = foto.filename or ""
-
+                # Validasi ekstensi
                 ekstensi = os.path.splitext(
-                    nama_file_lama
+                    foto.filename or ""
                 )[1].lower()
 
                 allowed = [
@@ -90,19 +80,14 @@ class ProfilController:
                 ]
 
                 if ekstensi not in allowed:
-
                     resp.status = 400
                     resp.media = {
                         "success": False,
-                        "message": "Format foto harus JPG, JPEG, PNG, atau WEBP"
+                        "message": "Format foto tidak didukung"
                     }
-
                     return
 
-                # -------------------------
-                # NAMA FILE BARU
-                # -------------------------
-
+                # Nama file baru
                 nama_file = (
                     uuid.uuid4().hex +
                     ekstensi
@@ -113,22 +98,12 @@ class ProfilController:
                     nama_file
                 )
 
-                # -------------------------
-                # SIMPAN FOTO
-                # -------------------------
-
+                # Simpan file
                 with open(path_file, "wb") as file:
-
                     foto.file.seek(0)
+                    file.write(foto.file.read())
 
-                    file.write(
-                        foto.file.read()
-                    )
-
-                # -------------------------
-                # HAPUS FOTO LAMA
-                # -------------------------
-
+                # Hapus foto lama
                 if user.foto:
 
                     foto_lama = os.path.join(
@@ -137,15 +112,10 @@ class ProfilController:
                     )
 
                     if os.path.exists(foto_lama):
-
                         try:
                             os.remove(foto_lama)
                         except Exception:
                             pass
-
-                # -------------------------
-                # SIMPAN NAMA FOTO
-                # -------------------------
 
                 user.foto = nama_file
 

@@ -3,20 +3,18 @@ import falcon
 from controllers.ProfilController import ProfilController
 
 
-class ProfilRoute:
+class ProfilResource:
 
-    def on_put(self, req, resp, user_id):
-
+    def on_put(self, req, resp, id):
         ProfilController.update_profil(
             req,
             resp,
-            user_id
+            id
         )
 
 
 def add_routes(app):
-
     app.add_route(
-        "/users/{user_id:int}/profil",
-        ProfilRoute()
+        "/profil/{id:int}",
+        ProfilResource()
     )
