@@ -15,13 +15,15 @@ class ProfilController:
     # =========================================
     # CREATE PROFIL
     # =========================================
+
     @staticmethod
     @db_session
     def create_profil(req, resp):
+
         try:
             nama = req.get_param("nama")
 
-            if not nama:
+            if nama is None:
                 resp.status = 400
                 resp.media = {
                     "success": False,
@@ -29,7 +31,7 @@ class ProfilController:
                 }
                 return
 
-            nama = nama.strip()
+            nama = str(nama).strip()
 
             if not nama:
                 resp.status = 400
@@ -39,18 +41,16 @@ class ProfilController:
                 }
                 return
 
-            profil = Profil(
-                nama=nama
-            )
-
             # =========================================
             # FOTO
             # =========================================
+
             foto = req.get_param("foto")
+            nama_file = None
 
-            if foto and foto.file:
+            if foto is not None and hasattr(foto, "file") and foto.file:
 
-                # Ukuran maksimal 2 MB
+                # Cek ukuran
                 foto.file.seek(0, os.SEEK_END)
                 ukuran = foto.file.tell()
                 foto.file.seek(0)
@@ -63,17 +63,12 @@ class ProfilController:
                     }
                     return
 
-                # Cek ekstensi
-                ekstensi = os.path.splitext(
-                    foto.filename or ""
-                )[1].lower()
+                # Cek nama file
+                filename = getattr(foto, "filename", "") or ""
 
-                allowed = [
-                    ".jpg",
-                    ".jpeg",
-                    ".png",
-                    ".webp"
-                ]
+                ekstensi = os.path.splitext(filename)[1].lower()
+
+                allowed = [".jpg", ".jpeg", ".png", ".webp"]
 
                 if ekstensi not in allowed:
                     resp.status = 400
@@ -83,7 +78,7 @@ class ProfilController:
                     }
                     return
 
-                # Nama file random
+                # Generate nama random
                 nama_file = uuid.uuid4().hex + ekstensi
 
                 path_file = os.path.join(
@@ -93,15 +88,21 @@ class ProfilController:
 
                 with open(path_file, "wb") as file:
                     foto.file.seek(0)
-                    file.write(
-                        foto.file.read()
-                    )
+                    file.write(foto.file.read())
 
-                profil.foto = nama_file
+            # =========================================
+            # SIMPAN DATABASE
+            # =========================================
+
+            profil = Profil(
+                nama=nama,
+                foto=nama_file
+            )
 
             # =========================================
             # RESPONSE
             # =========================================
+
             resp.status = 201
 
             resp.media = {
@@ -115,25 +116,30 @@ class ProfilController:
             }
 
         except Exception as e:
-            print("ERROR CREATE PROFIL:", e)
+
+            print("ERROR CREATE PROFIL:", repr(e))
 
             resp.status = 500
+
             resp.media = {
                 "success": False,
                 "message": "Gagal membuat profil",
                 "error": str(e)
             }
 
+
     # =========================================
     # GET PROFIL
     # =========================================
+
     @staticmethod
     @db_session
     def get_profil(req, resp, id):
+
         try:
             profil = Profil.get(id=id)
 
-            if not profil:
+            if profil is None:
                 resp.status = 404
                 resp.media = {
                     "success": False,
@@ -153,25 +159,30 @@ class ProfilController:
             }
 
         except Exception as e:
-            print("ERROR GET PROFIL:", e)
+
+            print("ERROR GET PROFIL:", repr(e))
 
             resp.status = 500
+
             resp.media = {
                 "success": False,
                 "message": "Gagal mengambil profil",
                 "error": str(e)
             }
 
+
     # =========================================
     # UPDATE PROFIL
     # =========================================
+
     @staticmethod
     @db_session
     def update_profil(req, resp, id):
+
         try:
             profil = Profil.get(id=id)
 
-            if not profil:
+            if profil is None:
                 resp.status = 404
                 resp.media = {
                     "success": False,
@@ -182,10 +193,12 @@ class ProfilController:
             # =========================================
             # UPDATE NAMA
             # =========================================
+
             nama = req.get_param("nama")
 
             if nama is not None:
-                nama = nama.strip()
+
+                nama = str(nama).strip()
 
                 if not nama:
                     resp.status = 400
@@ -200,11 +213,12 @@ class ProfilController:
             # =========================================
             # UPDATE FOTO
             # =========================================
+
             foto = req.get_param("foto")
 
-            if foto and foto.file:
+            if foto is not None and hasattr(foto, "file") and foto.file:
 
-                # Ukuran maksimal 2 MB
+                # Cek ukuran
                 foto.file.seek(0, os.SEEK_END)
                 ukuran = foto.file.tell()
                 foto.file.seek(0)
@@ -217,17 +231,11 @@ class ProfilController:
                     }
                     return
 
-                # Ekstensi
-                ekstensi = os.path.splitext(
-                    foto.filename or ""
-                )[1].lower()
+                filename = getattr(foto, "filename", "") or ""
 
-                allowed = [
-                    ".jpg",
-                    ".jpeg",
-                    ".png",
-                    ".webp"
-                ]
+                ekstensi = os.path.splitext(filename)[1].lower()
+
+                allowed = [".jpg", ".jpeg", ".png", ".webp"]
 
                 if ekstensi not in allowed:
                     resp.status = 400
@@ -238,44 +246,48 @@ class ProfilController:
                     return
 
                 # =========================================
-                # FILE BARU
+                # SIMPAN FOTO BARU
                 # =========================================
-                nama_file = uuid.uuid4().hex + ekstensi
 
-                path_file = os.path.join(
+                nama_file_baru = uuid.uuid4().hex + ekstensi
+
+                path_file_baru = os.path.join(
                     UPLOAD_FOLDER,
-                    nama_file
+                    nama_file_baru
                 )
 
-                with open(path_file, "wb") as file:
+                with open(path_file_baru, "wb") as file:
                     foto.file.seek(0)
-                    file.write(
-                        foto.file.read()
-                    )
+                    file.write(foto.file.read())
 
                 # =========================================
                 # HAPUS FOTO LAMA
                 # =========================================
+
                 if profil.foto:
+
                     foto_lama = os.path.join(
                         UPLOAD_FOLDER,
                         os.path.basename(profil.foto)
                     )
 
-                    if os.path.exists(foto_lama):
+                    if os.path.isfile(foto_lama):
+
                         try:
                             os.remove(foto_lama)
+
                         except Exception as e:
                             print(
                                 "Gagal menghapus foto lama:",
-                                e
+                                repr(e)
                             )
 
-                profil.foto = nama_file
+                profil.foto = nama_file_baru
 
             # =========================================
             # RESPONSE
             # =========================================
+
             resp.status = 200
 
             resp.media = {
@@ -289,9 +301,11 @@ class ProfilController:
             }
 
         except Exception as e:
-            print("ERROR UPDATE PROFIL:", e)
+
+            print("ERROR UPDATE PROFIL:", repr(e))
 
             resp.status = 500
+
             resp.media = {
                 "success": False,
                 "message": "Gagal memperbarui profil",
