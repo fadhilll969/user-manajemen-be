@@ -1,58 +1,208 @@
 import os
 import uuid
-import mimetypes
-import falcon
 
 from pony.orm import db_session
-from falcon import HTTPNotFound
 
-from models.User import User
+from models.Profil import Profil
 
-
-# ==========================================
-# FOLDER UPLOAD
-# ==========================================
 
 UPLOAD_FOLDER = "uploads/profil"
 
-os.makedirs(
-    UPLOAD_FOLDER,
-    exist_ok=True
-)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 class ProfilController:
 
-    # ==========================================
-    # UPDATE PROFIL
-    # ==========================================
+    # =========================================
+    # CREATE PROFIL
+    # =========================================
+    @staticmethod
+    @db_session
+    def create_profil(req, resp):
 
+        try:
+
+            nama = req.get_param("nama")
+
+            if not nama:
+                resp.status = 400
+                resp.media = {
+                    "success": False,
+                    "message": "Nama wajib diisi"
+                }
+                return
+
+            nama = nama.strip()
+
+            if not nama:
+                resp.status = 400
+                resp.media = {
+                    "success": False,
+                    "message": "Nama tidak boleh kosong"
+                }
+                return
+
+            profil = Profil(
+                nama=nama
+            )
+
+            # =========================================
+            # FOTO
+            # =========================================
+
+            foto = req.get_param("foto")
+
+            if foto and foto.file:
+
+                # ukuran
+                foto.file.seek(0, os.SEEK_END)
+                ukuran = foto.file.tell()
+                foto.file.seek(0)
+
+                if ukuran > 2 * 1024 * 1024:
+                    resp.status = 400
+                    resp.media = {
+                        "success": False,
+                        "message": "Ukuran foto maksimal 2 MB"
+                    }
+                    return
+
+                # ekstensi
+                ekstensi = os.path.splitext(
+                    foto.filename or ""
+                )[1].lower()
+
+                allowed = [
+                    ".jpg",
+                    ".jpeg",
+                    ".png",
+                    ".webp"
+                ]
+
+                if ekstensi not in allowed:
+                    resp.status = 400
+                    resp.media = {
+                        "success": False,
+                        "message": "Format foto tidak didukung"
+                    }
+                    return
+
+                nama_file = (
+                    uuid.uuid4().hex +
+                    ekstensi
+                )
+
+                path_file = os.path.join(
+                    UPLOAD_FOLDER,
+                    nama_file
+                )
+
+                with open(path_file, "wb") as file:
+
+                    foto.file.seek(0)
+
+                    file.write(
+                        foto.file.read()
+                    )
+
+                profil.foto = nama_file
+
+            resp.status = 201
+
+            resp.media = {
+                "success": True,
+                "message": "Profil berhasil dibuat",
+                "data": {
+                    "id": profil.id,
+                    "nama": profil.nama,
+                    "foto": profil.foto
+                }
+            }
+
+        except Exception as e:
+
+            print("ERROR CREATE PROFIL:", e)
+
+            resp.status = 500
+
+            resp.media = {
+                "success": False,
+                "message": "Gagal membuat profil",
+                "error": str(e)
+            }
+
+
+    # =========================================
+    # GET PROFIL
+    # =========================================
+    @staticmethod
+    @db_session
+    def get_profil(req, resp, id):
+
+        try:
+
+            profil = Profil.get(id=id)
+
+            if not profil:
+
+                resp.status = 404
+
+                resp.media = {
+                    "success": False,
+                    "message": "Profil tidak ditemukan"
+                }
+
+                return
+
+            resp.status = 200
+
+            resp.media = {
+                "success": True,
+                "data": {
+                    "id": profil.id,
+                    "nama": profil.nama,
+                    "foto": profil.foto
+                }
+            }
+
+        except Exception as e:
+
+            print("ERROR GET PROFIL:", e)
+
+            resp.status = 500
+
+            resp.media = {
+                "success": False,
+                "message": "Gagal mengambil profil",
+                "error": str(e)
+            }
+
+
+    # =========================================
+    # UPDATE PROFIL
+    # =========================================
     @staticmethod
     @db_session
     def update_profil(req, resp, id):
 
         try:
 
-            # ==========================================
-            # CARI USER
-            # ==========================================
+            profil = Profil.get(id=id)
 
-            user = User.get(id=id)
+            if not profil:
 
-            if not user:
-
-                resp.status = falcon.HTTP_404
+                resp.status = 404
 
                 resp.media = {
                     "success": False,
-                    "message": "User tidak ditemukan"
+                    "message": "Profil tidak ditemukan"
                 }
 
                 return
 
-            # ==========================================
+            # =========================================
             # UPDATE NAMA
-            # ==========================================
+            # =========================================
 
             nama = req.get_param("nama")
 
@@ -61,24 +211,18 @@ class ProfilController:
                 nama = nama.strip()
 
                 if nama:
-                    user.nama = nama
+                    profil.nama = nama
 
-            # ==========================================
+            # =========================================
             # UPDATE FOTO
-            # ==========================================
+            # =========================================
 
             foto = req.get_param("foto")
 
             if foto and foto.file:
 
-                # ==========================================
-                # VALIDASI UKURAN
-                # ==========================================
-
-                foto.file.seek(
-                    0,
-                    os.SEEK_END
-                )
+                # ukuran
+                foto.file.seek(0, os.SEEK_END)
 
                 ukuran = foto.file.tell()
 
@@ -86,7 +230,7 @@ class ProfilController:
 
                 if ukuran > 2 * 1024 * 1024:
 
-                    resp.status = falcon.HTTP_400
+                    resp.status = 400
 
                     resp.media = {
                         "success": False,
@@ -95,10 +239,7 @@ class ProfilController:
 
                     return
 
-                # ==========================================
-                # VALIDASI EXTENSION
-                # ==========================================
-
+                # ekstensi
                 ekstensi = os.path.splitext(
                     foto.filename or ""
                 )[1].lower()
@@ -112,7 +253,7 @@ class ProfilController:
 
                 if ekstensi not in allowed:
 
-                    resp.status = falcon.HTTP_400
+                    resp.status = 400
 
                     resp.media = {
                         "success": False,
@@ -121,9 +262,9 @@ class ProfilController:
 
                     return
 
-                # ==========================================
-                # GENERATE NAMA FILE
-                # ==========================================
+                # =========================================
+                # FILE BARU
+                # =========================================
 
                 nama_file = (
                     uuid.uuid4().hex +
@@ -135,14 +276,7 @@ class ProfilController:
                     nama_file
                 )
 
-                # ==========================================
-                # SIMPAN FOTO BARU
-                # ==========================================
-
-                with open(
-                    path_file,
-                    "wb"
-                ) as file:
+                with open(path_file, "wb") as file:
 
                     foto.file.seek(0)
 
@@ -150,160 +284,52 @@ class ProfilController:
                         foto.file.read()
                     )
 
-                # ==========================================
+                # =========================================
                 # HAPUS FOTO LAMA
-                # ==========================================
+                # =========================================
 
-                if user.foto:
+                if profil.foto:
 
                     foto_lama = os.path.join(
                         UPLOAD_FOLDER,
                         os.path.basename(
-                            user.foto
+                            profil.foto
                         )
                     )
 
                     if os.path.exists(foto_lama):
 
                         try:
+                            os.remove(foto_lama)
+                        except Exception:
+                            pass
 
-                            os.remove(
-                                foto_lama
-                            )
+                profil.foto = nama_file
 
-                        except Exception as e:
-
-                            print(
-                                "GAGAL HAPUS FOTO LAMA:",
-                                e
-                            )
-
-                # ==========================================
-                # SIMPAN NAMA FOTO KE DATABASE
-                # ==========================================
-
-                user.foto = nama_file
-
-            # ==========================================
+            # =========================================
             # RESPONSE
-            # ==========================================
+            # =========================================
 
-            resp.status = falcon.HTTP_200
+            resp.status = 200
 
             resp.media = {
-
                 "success": True,
-
                 "message": "Profil berhasil diperbarui",
-
                 "data": {
-
-                    "id": user.id,
-
-                    "nama": user.nama,
-
-                    "foto": user.foto
-
+                    "id": profil.id,
+                    "nama": profil.nama,
+                    "foto": profil.foto
                 }
-
             }
 
         except Exception as e:
 
-            print(
-                "ERROR UPDATE PROFIL:",
-                e
-            )
+            print("ERROR UPDATE PROFIL:", e)
 
-            resp.status = falcon.HTTP_500
+            resp.status = 500
 
             resp.media = {
-
                 "success": False,
-
                 "message": "Gagal memperbarui profil",
-
                 "error": str(e)
-
-            }
-
-
-    # ==========================================
-    # GET FOTO PROFIL
-    # ==========================================
-
-    @staticmethod
-    def get_foto(req, resp, filename):
-
-        try:
-
-            # ==========================================
-            # CEGAH PATH TRAVERSAL
-            # ==========================================
-
-            filename = os.path.basename(
-                filename
-            )
-
-            file_path = os.path.join(
-                UPLOAD_FOLDER,
-                filename
-            )
-
-            # ==========================================
-            # CEK FILE
-            # ==========================================
-
-            if not os.path.exists(file_path):
-
-                raise HTTPNotFound(
-                    description="Foto tidak ditemukan"
-                )
-
-            # ==========================================
-            # CONTENT TYPE
-            # ==========================================
-
-            content_type, _ = mimetypes.guess_type(
-                file_path
-            )
-
-            if not content_type:
-
-                content_type = "application/octet-stream"
-
-            resp.content_type = content_type
-
-            # ==========================================
-            # BACA FILE
-            # ==========================================
-
-            with open(
-                file_path,
-                "rb"
-            ) as file:
-
-                resp.data = file.read()
-
-        except HTTPNotFound:
-
-            raise
-
-        except Exception as e:
-
-            print(
-                "ERROR GET FOTO:",
-                e
-            )
-
-            resp.status = falcon.HTTP_500
-
-            resp.media = {
-
-                "success": False,
-
-                "message": "Gagal mengambil foto",
-
-                "error": str(e)
-
             }
