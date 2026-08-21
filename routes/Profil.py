@@ -1,5 +1,3 @@
-import falcon
-
 from controllers.ProfilController import ProfilController
 
 
