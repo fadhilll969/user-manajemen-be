@@ -1,9 +1,7 @@
 import falcon
 import json
 import re
-
 from pony.orm import db_session
-
 from models.Login import Login
 
 
@@ -26,20 +24,12 @@ class RegisterController:
         email = data.get("email")
         password = data.get("password")
 
-        # =========================
-        # VALIDASI FIELD
-        # =========================
-
         if not nama or not email or not password:
             resp.status = falcon.HTTP_400
             resp.media = {
                 "message": "Nama, email, dan password wajib diisi"
             }
             return
-
-        # =========================
-        # VALIDASI EMAIL
-        # =========================
 
         email = email.strip()
 
@@ -53,20 +43,12 @@ class RegisterController:
             }
             return
 
-        # =========================
-        # VALIDASI PASSWORD
-        # =========================
-
         if len(password) < 8:
             resp.status = falcon.HTTP_400
             resp.media = {
                 "message": "Password minimal 8 karakter"
             }
             return
-
-        # =========================
-        # CEK EMAIL
-        # =========================
 
         existing = Login.get(email=email)
 
@@ -76,10 +58,6 @@ class RegisterController:
                 "message": "Email sudah terdaftar"
             }
             return
-
-        # =========================
-        # CREATE USER
-        # =========================
 
         Login(
             nama=nama.strip(),
