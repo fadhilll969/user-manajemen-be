@@ -48,20 +48,39 @@ app = falcon.App(
 
 
 # =========================================
-# STATIC FILE FOTO PROFIL
+# PATH ABSOLUT UPLOAD
+# =========================================
+
+BASE_DIR = os.path.dirname(
+    os.path.abspath(__file__)
+)
+
+UPLOAD_DIR = os.path.join(
+    BASE_DIR,
+    "uploads"
+)
+
+os.makedirs(
+    UPLOAD_DIR,
+    exist_ok=True
+)
+
+
+# =========================================
+# STATIC FOTO PROFIL
 # =========================================
 
 app.add_static_route(
 
     "/uploads",
 
-    "uploads"
+    UPLOAD_DIR
 
 )
 
 
 # =========================================
-# MULTIPART HANDLER
+# MULTIPART
 # =========================================
 
 app.req_options.media_handlers[
@@ -76,9 +95,7 @@ app.req_options.media_handlers[
 # =========================================
 
 db.generate_mapping(
-
     create_tables=True
-
 )
 
 
@@ -102,24 +119,14 @@ add_profil_routes(app)
 if __name__ == "__main__":
 
     port = int(
-
         os.getenv(
-
             "PORT",
-
             8000
-
         )
-
     )
 
-
     serve(
-
         app,
-
         host="0.0.0.0",
-
         port=port
-
     )
